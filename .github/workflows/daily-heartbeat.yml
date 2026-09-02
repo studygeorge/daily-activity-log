@@ -35,9 +35,11 @@ jobs:
           printf -- '- %s — automated repository heartbeat\n' "$timestamp" >> "$log_file"
 
       - name: Commit and push
+        env:
+          TZ: Europe/Moscow
         run: |
           git config user.name "George"
           git config user.email "61087097+studygeorge@users.noreply.github.com"
           git add activity/
-          git commit -m "chore: daily heartbeat $(TZ=Europe/Moscow date +'%Y-%m-%d')"
+          git commit -m "chore: daily heartbeat $(date +'%Y-%m-%d')"
           git push
