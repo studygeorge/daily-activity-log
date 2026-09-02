@@ -4,6 +4,8 @@ on:
   schedule:
     # 03:17 Moscow time (UTC+3), away from GitHub's busiest minute.
     - cron: "17 0 * * *"
+    # Backup run at 15:43 Moscow time; it is a no-op if today's entry exists.
+    - cron: "43 12 * * *"
   workflow_dispatch:
 
 permissions:
@@ -18,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the default branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Append today's heartbeat
         env:
@@ -27,12 +29,15 @@ jobs:
           month="$(date +'%Y-%m')"
           timestamp="$(date +'%Y-%m-%d %H:%M:%S %Z')"
           log_file="activity/${month}.md"
+          today="$(date +'%Y-%m-%d')"
 
           if [ ! -f "$log_file" ]; then
             printf '# Activity for %s\n\n' "$month" > "$log_file"
           fi
 
-          printf -- '- %s — automated repository heartbeat\n' "$timestamp" >> "$log_file"
+          if ! grep -q -- "^- ${today} " "$log_file"; then
+            printf -- '- %s — automated repository heartbeat\n' "$timestamp" >> "$log_file"
+          fi
 
       - name: Commit and push
         env:
@@ -41,5 +46,6 @@ jobs:
           git config user.name "George"
           git config user.email "61087097+studygeorge@users.noreply.github.com"
           git add activity/
+          git diff --cached --quiet && exit 0
           git commit -m "chore: daily heartbeat $(date +'%Y-%m-%d')"
           git push
