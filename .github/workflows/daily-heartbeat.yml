@@ -1,0 +1,43 @@
+name: Daily repository heartbeat
+
+on:
+  schedule:
+    # 03:17 Moscow time (UTC+3), away from GitHub's busiest minute.
+    - cron: "17 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-repository-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  update-log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@v4
+
+      - name: Append today's heartbeat
+        env:
+          TZ: Europe/Moscow
+        run: |
+          month="$(date +'%Y-%m')"
+          timestamp="$(date +'%Y-%m-%d %H:%M:%S %Z')"
+          log_file="activity/${month}.md"
+
+          if [ ! -f "$log_file" ]; then
+            printf '# Activity for %s\n\n' "$month" > "$log_file"
+          fi
+
+          printf -- '- %s — automated repository heartbeat\n' "$timestamp" >> "$log_file"
+
+      - name: Commit and push
+        run: |
+          git config user.name "George"
+          git config user.email "61087097+studygeorge@users.noreply.github.com"
+          git add activity/
+          git commit -m "chore: daily heartbeat $(TZ=Europe/Moscow date +'%Y-%m-%d')"
+          git push
