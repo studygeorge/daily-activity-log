@@ -1,4 +1,4 @@
-name: Daily repository heartbeat
+name: Daily contribution art
 
 on:
   schedule:
@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: daily-repository-heartbeat
+  group: daily-contribution-art
   cancel-in-progress: false
 
 jobs:
@@ -22,30 +22,62 @@ jobs:
       - name: Check out the default branch
         uses: actions/checkout@v5
 
-      - name: Append today's heartbeat
-        env:
-          TZ: Europe/Moscow
-        run: |
-          month="$(date +'%Y-%m')"
-          timestamp="$(date +'%Y-%m-%d %H:%M:%S %Z')"
-          log_file="activity/${month}.md"
-          today="$(date +'%Y-%m-%d')"
-
-          if [ ! -f "$log_file" ]; then
-            printf '# Activity for %s\n\n' "$month" > "$log_file"
-          fi
-
-          if ! grep -q -- "^- ${today} " "$log_file"; then
-            printf -- '- %s — automated repository heartbeat\n' "$timestamp" >> "$log_file"
-          fi
-
-      - name: Commit and push
+      - name: Create today's contribution-art commits
         env:
           TZ: Europe/Moscow
         run: |
           git config user.name "George"
           git config user.email "61087097+studygeorge@users.noreply.github.com"
-          git add activity/
-          git diff --cached --quiet && exit 0
-          git commit -m "chore: daily heartbeat $(date +'%Y-%m-%d')"
+
+          art_start="2026-09-06"
+          month="$(date +'%Y-%m')"
+          timestamp="$(date +'%Y-%m-%d %H:%M:%S %Z')"
+          log_file="activity/${month}.md"
+          today="$(date +'%Y-%m-%d')"
+          start_epoch="$(date -d "$art_start" +%s)"
+          today_epoch="$(date -d "$today" +%s)"
+          day_offset="$(( (today_epoch - start_epoch) / 86400 ))"
+          target=1
+          symbol="B"
+
+          # Rows are Sunday through Saturday; columns are consecutive weeks.
+          pattern=(
+            ".DDDDD."
+            "D.....D"
+            "D.M.M.D"
+            "D.....D"
+            "D.MMM.D"
+            "D.....D"
+            ".DDDDD."
+          )
+
+          if [ "$day_offset" -ge 0 ] && [ "$day_offset" -lt 49 ]; then
+            column="$(( day_offset / 7 ))"
+            row="$(( day_offset % 7 ))"
+            symbol="${pattern[$row]:$column:1}"
+
+            case "$symbol" in
+              D) target=12 ;;
+              M) target=6 ;;
+              .) target=1 ;;
+            esac
+          fi
+
+          if [ ! -f "$log_file" ]; then
+            printf '# Activity for %s\n\n' "$month" > "$log_file"
+          fi
+
+          completed="$(grep -c -- "^- ${today} .*pulse" "$log_file" || true)"
+
+          if [ "$completed" -ge "$target" ]; then
+            exit 0
+          fi
+
+          for pulse in $(seq "$(( completed + 1 ))" "$target"); do
+            printf -- '- %s — art %s, pulse %02d/%02d\n' \
+              "$timestamp" "$symbol" "$pulse" "$target" >> "$log_file"
+            git add "$log_file"
+            git commit -m "art: ${today} pulse ${pulse}/${target}"
+          done
+
           git push
