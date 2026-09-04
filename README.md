@@ -14,8 +14,8 @@ through Saturday.
 D.....D
 D.M.M.D
 D.....D
-D.MMM.D
-D.....D
+D.M.M.D
+D..M..D
 .DDDDD.
 ```
 
